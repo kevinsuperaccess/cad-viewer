@@ -9,7 +9,7 @@
 import os
 import sys
 import json
-import struct
+import array
 import math
 
 # -- Configuration -------------------------------------------------------------
@@ -241,7 +241,8 @@ print("Processed {} elements, skipped {}.".format(processed, skipped))
 
 # -- Build binary buffer -------------------------------------------------------
 
-print("Building glTF binary buffer...")
+total_groups = len([b for b in material_map.values() if b['verts']])
+print("Building glTF binary buffer ({} material groups)...".format(total_groups))
 
 bin_parts   = []
 byte_offset = 0
@@ -249,6 +250,7 @@ accessors    = []
 buffer_views = []
 meshes       = []
 nodes        = []
+group_idx    = 0
 
 for mat_key, bucket in material_map.items():
     verts   = bucket['verts']
@@ -258,9 +260,13 @@ for mat_key, bucket in material_map.items():
     if len(verts) == 0 or len(indices) == 0:
         continue
 
-    # Positions
-    pos_data = struct.pack('<{}f'.format(len(verts) * 3),
-                           *[c for v in verts for c in v])
+    group_idx += 1
+    if group_idx % 10 == 0 or group_idx == total_groups:
+        print("  Packing group {}/{}...".format(group_idx, total_groups))
+
+    # Positions - use array module to avoid huge *args unpack in IronPython 2.7
+    pos_arr = array.array('f', [c for v in verts for c in v])
+    pos_data = pos_arr.tostring()
     pos_bv_idx = len(buffer_views)
     buffer_views.append({
         'buffer': 0,
@@ -286,8 +292,8 @@ for mat_key, bucket in material_map.items():
     })
 
     # Normals
-    nor_data = struct.pack('<{}f'.format(len(normals) * 3),
-                           *[c for n in normals for c in n])
+    nor_arr = array.array('f', [c for n in normals for c in n])
+    nor_data = nor_arr.tostring()
     nor_bv_idx = len(buffer_views)
     buffer_views.append({
         'buffer': 0,
@@ -308,7 +314,8 @@ for mat_key, bucket in material_map.items():
     })
 
     # Indices (Uint32 - models routinely exceed 65535 vertices)
-    idx_data = struct.pack('<{}I'.format(len(indices)), *indices)
+    idx_arr = array.array('I', indices)
+    idx_data = idx_arr.tostring()
     idx_bv_idx = len(buffer_views)
     buffer_views.append({
         'buffer': 0,
