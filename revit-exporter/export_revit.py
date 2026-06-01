@@ -1,4 +1,5 @@
-# export_revit.py — pyRevit script
+# -*- coding: utf-8 -*-
+# export_revit.py - pyRevit script
 # Run this inside Revit via pyRevit (push panel button or run from pyRevit console).
 # Revit must be open with an active document.
 #
@@ -11,13 +12,13 @@ import json
 import struct
 import math
 
-# ── Configuration ─────────────────────────────────────────────────────────────
+# -- Configuration -------------------------------------------------------------
 # Point this at the revit-exports folder inside your cad-viewer project.
 # Use an absolute path or a path relative to this script.
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                           '..', 'revit-exports')
 
-# ── Revit API imports ──────────────────────────────────────────────────────────
+# -- Revit API imports ---------------------------------------------------------
 try:
     from Autodesk.Revit.DB import (
         FilteredElementCollector,
@@ -29,7 +30,7 @@ try:
         ViewSchedule,
     )
 except ImportError:
-    print("ERROR: Autodesk.Revit.DB not available — run this script inside Revit via pyRevit.")
+    print("ERROR: Autodesk.Revit.DB not available - run this script inside Revit via pyRevit.")
     sys.exit(1)
 
 # Get the active document from the pyRevit / Revit host environment.
@@ -48,20 +49,20 @@ if doc is None:
     print("ERROR: No active Revit document. Open an RVT file in Revit first.")
     sys.exit(1)
 
-# ── Output directory ───────────────────────────────────────────────────────────
+# -- Output directory ----------------------------------------------------------
 try:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 except OSError as e:
     print("ERROR: Cannot create output directory {}: {}".format(OUTPUT_DIR, e))
     sys.exit(1)
 
-GLTF_PATH = os.path.join(OUTPUT_DIR, 'model.gltf')
-BIN_PATH  = os.path.join(OUTPUT_DIR, 'model.bin')
+GLTF_PATH  = os.path.join(OUTPUT_DIR, 'model.gltf')
+BIN_PATH   = os.path.join(OUTPUT_DIR, 'model.bin')
 SCHED_PATH = os.path.join(OUTPUT_DIR, 'schedules.json')
 
 FEET_TO_METRES = 0.3048
 
-# ── Geometry extraction ────────────────────────────────────────────────────────
+# -- Geometry helpers ----------------------------------------------------------
 
 opts = Options()
 opts.ComputeReferences = False
@@ -131,7 +132,7 @@ def walk_geometry(geo_elem, transform, mat_key, out_verts, out_normals, out_indi
     """
     Recursively walk a GeometryElement.
     Appends (position, normal) tuples to out_verts/out_normals and triangle
-    indices to out_indices — all relative to the start of this call's batch.
+    indices to out_indices - all relative to the start of this call's batch.
     """
     if geo_elem is None:
         return
@@ -179,7 +180,9 @@ def walk_geometry(geo_elem, transform, mat_key, out_verts, out_normals, out_indi
                     except Exception:
                         continue
 
-                    i0, i1, i2 = tri.get_Index(0), tri.get_Index(1), tri.get_Index(2)
+                    i0 = tri.get_Index(0)
+                    i1 = tri.get_Index(1)
+                    i2 = tri.get_Index(2)
                     if (i0 >= len(converted) or i1 >= len(converted) or
                             i2 >= len(converted)):
                         continue
@@ -197,12 +200,12 @@ def walk_geometry(geo_elem, transform, mat_key, out_verts, out_normals, out_indi
                     out_indices.extend([base, base+1, base+2])
 
 
-# ── Collect geometry grouped by material ──────────────────────────────────────
+# -- Collect geometry grouped by material -------------------------------------
 
 print("Collecting elements...")
 collector = FilteredElementCollector(doc).WhereElementIsNotElementType()
 
-# mat_key → { 'verts': [...], 'normals': [...], 'indices': [...] }
+# mat_key -> { 'verts': [...], 'normals': [...], 'indices': [...] }
 material_map = {}
 skipped = 0
 processed = 0
@@ -235,22 +238,17 @@ for element in collector:
 
 print("Processed {} elements, skipped {}.".format(processed, skipped))
 
-# ── Build binary buffer ────────────────────────────────────────────────────────
+# -- Build binary buffer -------------------------------------------------------
 
 print("Building glTF binary buffer...")
 
-# Each primitive writes: positions (float32 x3), normals (float32 x3), indices (uint32)
-# We pack everything into one .bin file and track byte offsets.
-
-bin_parts = []      # list of bytes objects
+bin_parts   = []
 byte_offset = 0
-
 accessors    = []
 buffer_views = []
 meshes       = []
 nodes        = []
 
-material_entries = []
 for mat_key, bucket in material_map.items():
     verts   = bucket['verts']
     normals = bucket['normals']
@@ -259,7 +257,7 @@ for mat_key, bucket in material_map.items():
     if len(verts) == 0 or len(indices) == 0:
         continue
 
-    # ── Positions ──────────────────────────────────
+    # Positions
     pos_data = struct.pack('<{}f'.format(len(verts) * 3),
                            *[c for v in verts for c in v])
     pos_bv_idx = len(buffer_views)
@@ -267,7 +265,7 @@ for mat_key, bucket in material_map.items():
         'buffer': 0,
         'byteOffset': byte_offset,
         'byteLength': len(pos_data),
-        'target': 34962,  # ARRAY_BUFFER
+        'target': 34962,
     })
     bin_parts.append(pos_data)
     byte_offset += len(pos_data)
@@ -279,14 +277,14 @@ for mat_key, bucket in material_map.items():
     accessors.append({
         'bufferView': pos_bv_idx,
         'byteOffset': 0,
-        'componentType': 5126,   # FLOAT
+        'componentType': 5126,
         'count': len(verts),
         'type': 'VEC3',
         'min': min_pos,
         'max': max_pos,
     })
 
-    # ── Normals ────────────────────────────────────
+    # Normals
     nor_data = struct.pack('<{}f'.format(len(normals) * 3),
                            *[c for n in normals for c in n])
     nor_bv_idx = len(buffer_views)
@@ -308,14 +306,14 @@ for mat_key, bucket in material_map.items():
         'type': 'VEC3',
     })
 
-    # ── Indices (Uint32) ───────────────────────────
+    # Indices (Uint32 - models routinely exceed 65535 vertices)
     idx_data = struct.pack('<{}I'.format(len(indices)), *indices)
     idx_bv_idx = len(buffer_views)
     buffer_views.append({
         'buffer': 0,
         'byteOffset': byte_offset,
         'byteLength': len(idx_data),
-        'target': 34963,  # ELEMENT_ARRAY_BUFFER
+        'target': 34963,
     })
     bin_parts.append(idx_data)
     byte_offset += len(idx_data)
@@ -324,12 +322,11 @@ for mat_key, bucket in material_map.items():
     accessors.append({
         'bufferView': idx_bv_idx,
         'byteOffset': 0,
-        'componentType': 5125,   # UNSIGNED_INT
+        'componentType': 5125,
         'count': len(indices),
         'type': 'SCALAR',
     })
 
-    # ── Mesh / node ────────────────────────────────
     mesh_idx = len(meshes)
     meshes.append({
         'primitives': [{
@@ -338,11 +335,10 @@ for mat_key, bucket in material_map.items():
                 'NORMAL':   nor_acc_idx,
             },
             'indices': idx_acc_idx,
-            'mode': 4,  # TRIANGLES
+            'mode': 4,
         }],
         'name': mat_key,
     })
-    node_idx = len(nodes)
     nodes.append({
         'mesh': mesh_idx,
         'extras': {'materialGroup': mat_key},
@@ -350,16 +346,16 @@ for mat_key, bucket in material_map.items():
 
 bin_bytes = b''.join(bin_parts)
 
-# ── Write .bin ────────────────────────────────────────────────────────────────
+# -- Write .bin ----------------------------------------------------------------
 try:
     with open(BIN_PATH, 'wb') as f:
         f.write(bin_bytes)
-    print("Written: {}  ({:.1f} MB)".format(BIN_PATH, len(bin_bytes) / 1_048_576))
+    print("Written: {}  ({:.1f} MB)".format(BIN_PATH, len(bin_bytes) / 1048576.0))
 except OSError as e:
     print("ERROR writing {}: {}".format(BIN_PATH, e))
     sys.exit(1)
 
-# ── Write .gltf ───────────────────────────────────────────────────────────────
+# -- Write .gltf ---------------------------------------------------------------
 gltf = {
     'asset': {'version': '2.0', 'generator': 'cad-viewer/export_revit.py'},
     'scene': 0,
@@ -372,22 +368,22 @@ gltf = {
         'uri':        'model.bin',
         'byteLength': len(bin_bytes),
     }],
-    'materials': [],  # Three.js will use MeshStandardMaterial defaults
+    'materials': [],
 }
 
 try:
-    with open(GLTF_PATH, 'w', encoding='utf-8') as f:
+    with open(GLTF_PATH, 'w') as f:
         json.dump(gltf, f, indent=2)
     print("Written: {}".format(GLTF_PATH))
 except OSError as e:
     print("ERROR writing {}: {}".format(GLTF_PATH, e))
     sys.exit(1)
 
-# ── Schedule extraction ────────────────────────────────────────────────────────
+# -- Schedule extraction -------------------------------------------------------
 
 print("Extracting schedules...")
 
-SKIP_NAMES = {"<Revision Schedule>", "<Sheet List>", "<Note Block>"}
+SKIP_NAMES = set(["<Revision Schedule>", "<Sheet List>", "<Note Block>"])
 
 schedules_out = []
 
@@ -450,8 +446,8 @@ except Exception as e:
     print("WARNING: Could not collect schedules: {}".format(e))
 
 try:
-    with open(SCHED_PATH, 'w', encoding='utf-8') as f:
-        json.dump(schedules_out, f, indent=2, ensure_ascii=False)
+    with open(SCHED_PATH, 'w') as f:
+        json.dump(schedules_out, f, indent=2)
     print("Written: {}  ({} schedules)".format(SCHED_PATH, len(schedules_out)))
 except OSError as e:
     print("ERROR writing {}: {}".format(SCHED_PATH, e))
@@ -459,6 +455,5 @@ except OSError as e:
 
 print("\nExport complete.")
 print("  Meshes:    {}".format(len(meshes)))
-print("  Materials: {}".format(len(meshes)))
 print("  Schedules: {}".format(len(schedules_out)))
-print("\nNext step: python backend/server.py  (or npm start in cad-viewer/)")
+print("\nNext step: npm start in cad-viewer/ then open http://localhost:3000")
