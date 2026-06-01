@@ -20,6 +20,20 @@
       <p>Drag &amp; drop a <strong>.dxf</strong> file here</p>
       <p class="sub">or <label for="file-input" class="file-label">browse to upload</label></p>
       <input id="file-input" type="file" accept=".dxf" aria-label="Upload DXF file">
+
+      <div class="divider"><span>or</span></div>
+
+      <button id="btn-load-revit" class="revit-btn" aria-label="Load Revit export">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M9 3v18M15 9h3M15 12h3M15 15h3"/>
+        </svg>
+        Load Revit Export
+        <span id="revit-badge" hidden>ready</span>
+      </button>
+      <p id="revit-hint" class="sub revit-hint">
+        Run <code>export_revit.py</code> inside Revit first to generate the export
+      </p>
     </div>
   </div>
 
@@ -29,23 +43,50 @@
     <header id="toolbar">
       <span id="file-name"></span>
       <div id="tool-buttons">
-        <button id="btn-zoom-in"  title="Zoom in"  aria-label="Zoom in">+</button>
-        <button id="btn-zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
-        <button id="btn-fit"      title="Fit to screen" aria-label="Fit to screen">⊡</button>
+        <!-- DXF-only controls -->
+        <span id="dxf-tools">
+          <button id="btn-zoom-in"  title="Zoom in"  aria-label="Zoom in">+</button>
+          <button id="btn-zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+          <button id="btn-fit"      title="Fit to screen" aria-label="Fit to screen">⊡</button>
+          <span class="sep"></span>
+          <button id="btn-text"   class="tool-btn" data-tool="text"   title="Add text note" aria-label="Add text annotation">T</button>
+          <button id="btn-rect"   class="tool-btn" data-tool="rect"   title="Draw rectangle" aria-label="Draw rectangle annotation">▭</button>
+          <button id="btn-circle" class="tool-btn" data-tool="circle" title="Draw circle"    aria-label="Draw circle annotation">○</button>
+          <button id="btn-arrow"  class="tool-btn" data-tool="arrow"  title="Draw arrow"     aria-label="Draw arrow annotation">↗</button>
+          <span class="sep"></span>
+          <button id="btn-save" title="Save annotations" aria-label="Save annotations">💾 Save</button>
+        </span>
+        <!-- RVT-only controls -->
+        <span id="rvt-tools" hidden>
+          <button id="btn-rvt-zoom-in"  title="Zoom in"      aria-label="Zoom in">+</button>
+          <button id="btn-rvt-zoom-out" title="Zoom out"     aria-label="Zoom out">−</button>
+          <button id="btn-rvt-fit"      title="Fit to model" aria-label="Fit to model">⊡</button>
+          <span class="sep"></span>
+          <label id="schedule-toggle-label">
+            <input type="checkbox" id="schedule-toggle" checked aria-label="Show schedules"> Schedules
+          </label>
+        </span>
         <span class="sep"></span>
-        <button id="btn-text"   class="tool-btn" data-tool="text"   title="Add text note" aria-label="Add text annotation">T</button>
-        <button id="btn-rect"   class="tool-btn" data-tool="rect"   title="Draw rectangle" aria-label="Draw rectangle annotation">▭</button>
-        <button id="btn-circle" class="tool-btn" data-tool="circle" title="Draw circle"    aria-label="Draw circle annotation">○</button>
-        <button id="btn-arrow"  class="tool-btn" data-tool="arrow"  title="Draw arrow"     aria-label="Draw arrow annotation">↗</button>
-        <span class="sep"></span>
-        <button id="btn-save" title="Save annotations" aria-label="Save annotations">💾 Save</button>
-        <button id="btn-new"  title="Load another file" aria-label="Load another file">New</button>
+        <button id="btn-new" title="Load another file" aria-label="Load another file">New</button>
       </div>
     </header>
 
     <div id="viewer-wrap">
+      <!-- DXF viewer -->
       <canvas id="viewer-canvas" aria-label="DXF drawing canvas"></canvas>
       <svg id="annotation-layer" aria-label="Annotation layer"></svg>
+
+      <!-- RVT viewer -->
+      <canvas id="rvt-canvas" hidden aria-label="Revit 3D model canvas"></canvas>
+
+      <!-- Schedules panel (RVT mode) -->
+      <div id="schedule-panel" hidden aria-label="Revit schedules">
+        <div id="schedule-header">
+          <strong>Schedules</strong>
+          <input id="schedule-search" placeholder="Search…" aria-label="Search schedules">
+        </div>
+        <div id="schedule-container"></div>
+      </div>
     </div>
 
   </div>

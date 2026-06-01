@@ -7,6 +7,7 @@
   --border: #0f3460;
   --accent: #e94560;
   --accent2: #0f3460;
+  --accent-rvt: #0078d4;
   --text: #e0e0e0;
   --text-dim: #888;
   --toolbar-h: 48px;
@@ -32,9 +33,35 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 #file-input { display: none; }
 .file-label { color: var(--accent); cursor: pointer; text-decoration: underline; }
 
+.divider {
+  display: flex; align-items: center; width: 100%; gap: 12px;
+  color: var(--text-dim); font-size: .8rem; margin: 4px 0;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+.revit-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--accent-rvt); border: none; color: #fff;
+  border-radius: 8px; padding: 10px 20px; cursor: pointer;
+  font-size: .95rem; font-weight: 500; transition: background .15s;
+}
+.revit-btn:hover { background: #005fa3; }
+.revit-btn svg { flex-shrink: 0; }
+
+#revit-badge {
+  background: #1e7e34; border-radius: 4px; padding: 1px 6px;
+  font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+}
+
+.revit-hint { margin-top: 2px; }
+.revit-hint code {
+  background: #222; border-radius: 3px; padding: 1px 5px; font-size: .82rem;
+}
+
 /* ── Workspace ─────────────────────────────────── */
 #workspace { display: flex; flex-direction: column; height: 100vh; }
-#workspace[hidden] { display: none; }
 
 #toolbar {
   height: var(--toolbar-h); min-height: var(--toolbar-h);
@@ -43,6 +70,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 }
 #file-name { flex: 1; font-size: .85rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #tool-buttons { display: flex; align-items: center; gap: 4px; }
+#dxf-tools, #rvt-tools { display: flex; align-items: center; gap: 4px; }
 #toolbar button {
   background: var(--accent2); border: 1px solid var(--border); color: var(--text);
   border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: .9rem;
@@ -52,12 +80,18 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .tool-btn.active { background: var(--accent); border-color: var(--accent); }
 .sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
 
-/* ── Viewer ────────────────────────────────────── */
+#schedule-toggle-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: .85rem; color: var(--text-dim); cursor: pointer; user-select: none;
+}
+
+/* ── Viewer area ───────────────────────────────── */
 #viewer-wrap {
   flex: 1; position: relative; overflow: hidden; background: #111;
-  cursor: grab;
+  display: flex;
 }
-#viewer-wrap.grabbing { cursor: grabbing; }
+
+/* DXF canvas + annotation SVG fill remaining space */
 #viewer-canvas { position: absolute; top: 0; left: 0; }
 #annotation-layer {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -65,7 +99,43 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 }
 #annotation-layer.drawing { pointer-events: all; cursor: crosshair; }
 
-/* annotation elements */
+/* RVT canvas fills the left portion of viewer-wrap */
+#rvt-canvas { flex: 1; display: block; cursor: grab; }
+#rvt-canvas.grabbing { cursor: grabbing; }
+
+/* ── Schedule panel ────────────────────────────── */
+#schedule-panel {
+  width: 360px; min-width: 240px; max-width: 480px;
+  background: var(--surface); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+#schedule-header {
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
+}
+#schedule-search {
+  width: 100%; background: #111; border: 1px solid var(--border);
+  color: var(--text); border-radius: 6px; padding: 5px 8px; font-size: .85rem;
+}
+#schedule-container {
+  overflow-y: auto; flex: 1; padding: 8px 12px;
+}
+#schedule-container h3 {
+  font-size: .85rem; color: var(--text-dim); margin: 12px 0 4px;
+  border-bottom: 1px solid var(--border); padding-bottom: 4px;
+}
+#schedule-container h3:first-child { margin-top: 0; }
+table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+td, th {
+  border: 1px solid var(--border); padding: 3px 6px;
+  text-align: left; white-space: nowrap; max-width: 160px;
+  overflow: hidden; text-overflow: ellipsis;
+}
+th { background: var(--accent2); color: var(--text); font-weight: 600; }
+tr:nth-child(even) td { background: rgba(255,255,255,.03); }
+tr.hidden { display: none; }
+
+/* ── Annotation elements ───────────────────────── */
 .ann-text {
   font-size: 14px; fill: #ffdd57; font-family: system-ui, sans-serif;
   cursor: move; user-select: none;
@@ -73,7 +143,6 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .ann-rect { fill: none; stroke: #e94560; stroke-width: 2; cursor: move; }
 .ann-circle { fill: none; stroke: #00d2ff; stroke-width: 2; cursor: move; }
 .ann-arrow { stroke: #a8ff78; stroke-width: 2; marker-end: url(#arrowhead); cursor: move; }
-.ann-selected { outline: 2px dashed #fff; }
 
 /* ── Toast ─────────────────────────────────────── */
 #toast {
@@ -82,6 +151,5 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
   font-size: .9rem; z-index: 999; max-width: 420px; text-align: center;
   box-shadow: 0 4px 16px rgba(0,0,0,.4);
 }
-#toast[hidden] { display: none; }
-#toast.error { background: #7b1e1e; }
+#toast.error   { background: #7b1e1e; }
 #toast.success { background: #1e5c2e; }

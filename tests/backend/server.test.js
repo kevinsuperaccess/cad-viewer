@@ -160,6 +160,30 @@ describe('Annotations API', () => {
   });
 });
 
+// ── Revit export status ──────────────────────────────────────────────────────
+
+describe('GET /api/revit/status', () => {
+  it('returns 200 with available:false when no export exists', async () => {
+    const res = await request(app).get('/api/revit/status');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('available');
+    expect(typeof res.body.available).toBe('boolean');
+  });
+
+  it('returns available:true when model.gltf exists in revit-exports/', async () => {
+    const { REVIT_EXPORTS_DIR } = await import('../../src/config.js');
+    const gltfPath = path.join(REVIT_EXPORTS_DIR, 'model.gltf');
+    fs.mkdirSync(REVIT_EXPORTS_DIR, { recursive: true });
+    fs.writeFileSync(gltfPath, '{}');
+
+    const res = await request(app).get('/api/revit/status');
+    expect(res.status).toBe(200);
+    expect(res.body.available).toBe(true);
+
+    fs.unlinkSync(gltfPath);
+  });
+});
+
 // ── Error codes ─────────────────────────────────────────────────────────────
 
 describe('Error handling', () => {

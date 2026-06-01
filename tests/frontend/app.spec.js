@@ -255,3 +255,147 @@ test('failed annotation save shows error without losing annotations', async ({ p
   // Annotation must still be visible — work is not lost
   await expect(layer.locator('rect[data-ann]')).toHaveCount(1);
 });
+
+// ── Revit export button ───────────────────────────────────────────────────────
+
+test('Load Revit Export button is visible on the drop zone', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#btn-load-revit')).toBeVisible();
+});
+
+test('Load Revit Export shows error toast when no export exists', async ({ page }) => {
+  await page.goto('/');
+
+  // Ensure status endpoint reports no export available
+  await page.route('**/api/revit/status', (route) =>
+    route.fulfill({ status: 200, body: JSON.stringify({ available: false }) })
+  );
+
+  await page.locator('#btn-load-revit').click();
+  const toast = page.locator('#toast');
+  await expect(toast).toBeVisible({ timeout: 5000 });
+  await expect(toast).toContainText('No Revit export found', { ignoreCase: true });
+});
+
+test('Load Revit Export loads workspace when export is available', async ({ page }) => {
+  await page.goto('/');
+
+  // Stub: status says available, glTF is a minimal valid file, schedules empty
+  const minimalGltf = JSON.stringify({
+    asset: { version: '2.0' }, scene: 0,
+    scenes: [{ nodes: [] }], nodes: [], meshes: [],
+    accessors: [], bufferViews: [], buffers: [],
+  });
+
+  await page.route('**/api/revit/status', (route) =>
+    route.fulfill({ status: 200, body: JSON.stringify({ available: true }) })
+  );
+  await page.route('**/revit-exports/model.gltf', (route) =>
+    route.fulfill({ status: 200, contentType: 'model/gltf+json', body: minimalGltf })
+  );
+  await page.route('**/revit-exports/schedules.json', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  );
+
+  await page.locator('#btn-load-revit').click();
+  await expect(page.locator('#workspace')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('#rvt-canvas')).toBeVisible();
+  await expect(page.locator('#viewer-canvas')).toBeHidden();
+});
+
+test('schedules panel shows "No schedules" message when schedules.json is empty', async ({ page }) => {
+  await page.goto('/');
+
+  const minimalGltf = JSON.stringify({
+    asset: { version: '2.0' }, scene: 0,
+    scenes: [{ nodes: [] }], nodes: [], meshes: [],
+    accessors: [], bufferViews: [], buffers: [],
+  });
+
+  await page.route('**/api/revit/status', (route) =>
+    route.fulfill({ status: 200, body: JSON.stringify({ available: true }) })
+  );
+  await page.route('**/revit-exports/model.gltf', (route) =>
+    route.fulfill({ status: 200, contentType: 'model/gltf+json', body: minimalGltf })
+  );
+  await page.route('**/revit-exports/schedules.json', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  );
+
+  await page.locator('#btn-load-revit').click();
+  await expect(page.locator('#workspace')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('#schedule-container')).toContainText('No schedules', { ignoreCase: true });
+});
+
+test('schedules panel renders rows from schedules.json', async ({ page }) => {
+  await page.goto('/');
+
+  const minimalGltf = JSON.stringify({
+    asset: { version: '2.0' }, scene: 0,
+    scenes: [{ nodes: [] }], nodes: [], meshes: [],
+    accessors: [], bufferViews: [], buffers: [],
+  });
+  const schedules = JSON.stringify([{
+    schedule: 'Door Schedule',
+    columns: ['Mark', 'Type', 'Width'],
+    rows: [['D01', 'Single Flush', '900'], ['D02', 'Double', '1800']],
+  }]);
+
+  await page.route('**/api/revit/status', (route) =>
+    route.fulfill({ status: 200, body: JSON.stringify({ available: true }) })
+  );
+  await page.route('**/revit-exports/model.gltf', (route) =>
+    route.fulfill({ status: 200, contentType: 'model/gltf+json', body: minimalGltf })
+  );
+  await page.route('**/revit-exports/schedules.json', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: schedules })
+  );
+
+  await page.locator('#btn-load-revit').click();
+  await expect(page.locator('#workspace')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('#schedule-container')).toContainText('Door Schedule');
+  await expect(page.locator('#schedule-container')).toContainText('D01');
+  await expect(page.locator('#schedule-container')).toContainText('D02');
+});
+
+test('schedule search filters rows', async ({ page }) => {
+  await page.goto('/');
+
+  const minimalGltf = JSON.stringify({
+    asset: { version: '2.0' }, scene: 0,
+    scenes: [{ nodes: [] }], nodes: [], meshes: [],
+    accessors: [], bufferViews: [], buffers: [],
+  });
+  const schedules = JSON.stringify([{
+    schedule: 'Window Schedule',
+    columns: ['Mark', 'Type'],
+    rows: [['W01', 'Fixed'], ['W02', 'Casement']],
+  }]);
+
+  await page.route('**/api/revit/status', (r) =>
+    r.fulfill({ status: 200, body: JSON.stringify({ available: true }) })
+  );
+  await page.route('**/revit-exports/model.gltf', (r) =>
+    r.fulfill({ status: 200, contentType: 'model/gltf+json', body: minimalGltf })
+  );
+  await page.route('**/revit-exports/schedules.json', (r) =>
+    r.fulfill({ status: 200, contentType: 'application/json', body: schedules })
+  );
+
+  await page.locator('#btn-load-revit').click();
+  await expect(page.locator('#workspace')).toBeVisible({ timeout: 15_000 });
+
+  await page.locator('#schedule-search').fill('casement');
+  // W01/Fixed row should be hidden, Casement row visible
+  const rows = page.locator('#schedule-container tr');
+  const count = await rows.count();
+  let visibleTexts = [];
+  for (let i = 0; i < count; i++) {
+    const cls = await rows.nth(i).getAttribute('class');
+    if (!cls || !cls.includes('hidden')) {
+      visibleTexts.push(await rows.nth(i).innerText());
+    }
+  }
+  expect(visibleTexts.some((t) => t.toLowerCase().includes('casement'))).toBe(true);
+  expect(visibleTexts.every((t) => !t.toLowerCase().includes('w01'))).toBe(true);
+});
