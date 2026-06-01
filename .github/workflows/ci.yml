@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  test:
+    name: Build, audit, test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies (pinned lockfile)
+        run: npm ci
+
+      - name: Security audit
+        run: npm audit --audit-level=high
+        # Fails the pipeline if any HIGH or CRITICAL vulnerabilities are found
+
+      - name: Run backend tests (Vitest + Supertest)
+        run: npm run test:backend
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run frontend tests (Playwright)
+        run: npm run test:frontend
+        env:
+          PORT: 3000
+          UPLOAD_DIR: uploads
+          ANNOTATIONS_DIR: annotations
+          MAX_FILE_SIZE_MB: 50
+
+      - name: Verify server starts and responds on :3000
+        run: |
+          node src/server.js &
+          SERVER_PID=$!
+          sleep 3
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/health)
+          kill $SERVER_PID
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check failed — got HTTP $STATUS"
+            exit 1
+          fi
+          echo "Health check passed (HTTP 200)"
+        env:
+          PORT: 3000
+          UPLOAD_DIR: uploads
+          ANNOTATIONS_DIR: annotations
+          MAX_FILE_SIZE_MB: 50
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CAD Viewer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Drop zone shown when no file loaded -->
+  <div id="drop-zone" role="region" aria-label="File drop zone">
+    <div id="drop-zone-inner">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 16V4m0 0L8 8m4-4l4 4"/>
+        <path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/>
+      </svg>
+      <p>Drag &amp; drop a <strong>.dxf</strong> file here</p>
+      <p class="sub">or <label for="file-input" class="file-label">browse to upload</label></p>
+      <input id="file-input" type="file" accept=".dxf" aria-label="Upload DXF file">
+    </div>
+  </div>
+
+  <!-- Main workspace shown after load -->
+  <div id="workspace" hidden>
+
+    <header id="toolbar">
+      <span id="file-name"></span>
+      <div id="tool-buttons">
+        <button id="btn-zoom-in"  title="Zoom in"  aria-label="Zoom in">+</button>
+        <button id="btn-zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+        <button id="btn-fit"      title="Fit to screen" aria-label="Fit to screen">⊡</button>
+        <span class="sep"></span>
+        <button id="btn-text"   class="tool-btn" data-tool="text"   title="Add text note" aria-label="Add text annotation">T</button>
+        <button id="btn-rect"   class="tool-btn" data-tool="rect"   title="Draw rectangle" aria-label="Draw rectangle annotation">▭</button>
+        <button id="btn-circle" class="tool-btn" data-tool="circle" title="Draw circle"    aria-label="Draw circle annotation">○</button>
+        <button id="btn-arrow"  class="tool-btn" data-tool="arrow"  title="Draw arrow"     aria-label="Draw arrow annotation">↗</button>
+        <span class="sep"></span>
+        <button id="btn-save" title="Save annotations" aria-label="Save annotations">💾 Save</button>
+        <button id="btn-new"  title="Load another file" aria-label="Load another file">New</button>
+      </div>
+    </header>
+
+    <div id="viewer-wrap">
+      <canvas id="viewer-canvas" aria-label="DXF drawing canvas"></canvas>
+      <svg id="annotation-layer" aria-label="Annotation layer"></svg>
+    </div>
+
+  </div>
+
+  <!-- Status / error toast -->
+  <div id="toast" role="alert" aria-live="assertive" hidden></div>
+
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

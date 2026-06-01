@@ -1,0 +1,87 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+
+:root {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --border: #0f3460;
+  --accent: #e94560;
+  --accent2: #0f3460;
+  --text: #e0e0e0;
+  --text-dim: #888;
+  --toolbar-h: 48px;
+}
+
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
+
+/* ── Drop zone ─────────────────────────────────── */
+#drop-zone {
+  display: flex; align-items: center; justify-content: center;
+  height: 100vh;
+}
+#drop-zone-inner {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  border: 2px dashed var(--border); border-radius: 16px;
+  padding: 60px 80px; color: var(--text-dim);
+  transition: border-color .2s, color .2s;
+}
+#drop-zone.drag-over #drop-zone-inner { border-color: var(--accent); color: var(--text); }
+#drop-zone-inner svg { opacity: .5; }
+#drop-zone-inner p { font-size: 1.1rem; }
+#drop-zone-inner .sub { font-size: .9rem; }
+#file-input { display: none; }
+.file-label { color: var(--accent); cursor: pointer; text-decoration: underline; }
+
+/* ── Workspace ─────────────────────────────────── */
+#workspace { display: flex; flex-direction: column; height: 100vh; }
+#workspace[hidden] { display: none; }
+
+#toolbar {
+  height: var(--toolbar-h); min-height: var(--toolbar-h);
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 12px; gap: 8px;
+}
+#file-name { flex: 1; font-size: .85rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#tool-buttons { display: flex; align-items: center; gap: 4px; }
+#toolbar button {
+  background: var(--accent2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: .9rem;
+  transition: background .15s;
+}
+#toolbar button:hover { background: #1a4a8a; }
+.tool-btn.active { background: var(--accent); border-color: var(--accent); }
+.sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+
+/* ── Viewer ────────────────────────────────────── */
+#viewer-wrap {
+  flex: 1; position: relative; overflow: hidden; background: #111;
+  cursor: grab;
+}
+#viewer-wrap.grabbing { cursor: grabbing; }
+#viewer-canvas { position: absolute; top: 0; left: 0; }
+#annotation-layer {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; overflow: visible;
+}
+#annotation-layer.drawing { pointer-events: all; cursor: crosshair; }
+
+/* annotation elements */
+.ann-text {
+  font-size: 14px; fill: #ffdd57; font-family: system-ui, sans-serif;
+  cursor: move; user-select: none;
+}
+.ann-rect { fill: none; stroke: #e94560; stroke-width: 2; cursor: move; }
+.ann-circle { fill: none; stroke: #00d2ff; stroke-width: 2; cursor: move; }
+.ann-arrow { stroke: #a8ff78; stroke-width: 2; marker-end: url(#arrowhead); cursor: move; }
+.ann-selected { outline: 2px dashed #fff; }
+
+/* ── Toast ─────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: #222; color: #fff; border-radius: 8px; padding: 10px 20px;
+  font-size: .9rem; z-index: 999; max-width: 420px; text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+#toast[hidden] { display: none; }
+#toast.error { background: #7b1e1e; }
+#toast.success { background: #1e5c2e; }
