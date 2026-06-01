@@ -51,7 +51,8 @@ if doc is None:
 
 # -- Output directory ----------------------------------------------------------
 try:
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    if not os.path.isdir(OUTPUT_DIR):
+        os.makedirs(OUTPUT_DIR)
 except OSError as e:
     print("ERROR: Cannot create output directory {}: {}".format(OUTPUT_DIR, e))
     sys.exit(1)
