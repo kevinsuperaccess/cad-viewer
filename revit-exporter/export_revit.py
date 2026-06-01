@@ -13,10 +13,9 @@ import array
 import math
 
 # -- Configuration -------------------------------------------------------------
-# Point this at the revit-exports folder inside your cad-viewer project.
-# Use an absolute path or a path relative to this script.
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                          '..', 'revit-exports')
+# Absolute path to the revit-exports folder inside your cad-viewer project.
+# This must match where the Node.js server looks for the files.
+OUTPUT_DIR = r'C:\Users\KevinChan-SuperAcces\OneDrive - Preston Group\Desktop\Claude Code\cad-viewer\revit-exports'
 
 # -- Revit API imports ---------------------------------------------------------
 try:
